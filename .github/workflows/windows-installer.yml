@@ -1,0 +1,23 @@
+name: Build Windows setup.exe
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - installer/windows/**
+      - .github/workflows/windows-installer.yml
+jobs:
+  installer:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NSIS
+        run: choco install nsis --no-progress -y
+      - name: Build setup.exe
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\NSIS\makensis.exe" installer/windows/setup.nsi'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kotoba-memo-windows-setup
+          path: installer/windows/kotoba-memo-setup.exe
