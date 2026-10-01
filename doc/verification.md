@@ -12,6 +12,8 @@
 
 - `npm test`：12件成功。
 - `npm run build`：TypeScript検査・Viteビルド・PWA生成成功。
+- GitHub ActionsのCheck applicationでもテスト・ビルド成功（実行36939056785）。
+- Windows runnerでNSISによるsetup.exe生成成功（実行36939056782）。Artifactsのkotoba-memo-windows-setupから取得できる。
 - 2端末を模したテストで、実際のcloud-sync.tsとgoogle-drive.tsを実行。GoogleのHTTP応答とIndexedDBはテスト用に置き換えた。
 - 双方向反映、オフラインキュー、競合選択、保存済みなのに応答を受信できない場合の再試行、応答未確認のまま続けた編集、削除、別アカウント分離を確認。
 - メモ単位の同時変更の結合、削除フラグ、カテゴリの空一覧、不正データの拒否、元の読み上げ処理も確認。
@@ -21,7 +23,7 @@
 - 実際のGoogle OAuthログイン、Drive APIへの保存・読込、第三者アカウントへの公開。
 - 実際のWindows PCとiPhone・Android間の同期。
 - デスクトップ／スマホの描画と実操作。検証環境にChromiumがなく、Playwright用ブラウザのダウンロードも失敗したため、ブラウザによる画面確認は完了していない。CSS・主な画面構成は元版を引き継いでいるが、表示確認済みとは扱わない。
-- Windows setup.exeの生成結果、コード署名、Windows実機でのインストールとアンインストール。
+- Windows setup.exeのコード署名、Windows実機でのインストールとアンインストール。
 - 大量データ・長期間利用時の容量と速度。
 
 Google OAuthクライアントIDを配布者が設定し、実アカウントで利用者向け手順の同期確認を行うまで、Google同期版の動作確認が完了したとは扱わない。
