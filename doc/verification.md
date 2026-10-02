@@ -52,3 +52,8 @@ Browserプラグインがないため既存PlaywrightとシステムChromiumを�
 | スクリーンショット | `/tmp/kotoba-setup-desktop.png` と `/tmp/kotoba-setup-narrow.png` |
 
 実機同期の成功や配布可能なsetup.exeの完成は断定しません。
+
+
+## PC版0.3.0：初回設定ガイドの追加検証
+
+[ガイドの検証範囲](guided_setup.md)を参照してください。ウィザードは1100×850と390×844のローカルChromiumで操作確認、コンソールエラーなし。印刷用PDFはA4・14ページ。図解は説明用の再現図です。新しいCloudスクリプトは模擬gcloudでテストしました。0.3.0のWindowsビルドと実Cloudへの設置は未確認です。
