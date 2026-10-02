@@ -4,10 +4,10 @@ const state = { project: guide.project(query.get('project') || '') ? query.get('
 const pages = document.getElementById('pages')
 const make = (tag, text) => { const el = document.createElement(tag); if (text) el.textContent = text; return el }
 const cover = make('section'); cover.className = 'page cover'
-cover.append(make('p', 'ことばメモ · はじめての準備'), make('h1', '初回設定の\n図解マニュアル'), make('p', '一枚ずつ進めてください。終わったら、確認欄にチェックします。'), make('p', 'Googleへのログインと請求先登録は、ご本人が行います。Cloudの利用量に応じて費用が発生します。'), make('p', '図は操作場所を説明するための再現図です。Googleの画面表示は変わる場合があります。'), make('p', 'プロジェクトID：' + (state.project || '____________________________')), make('p', 'アプリURL：' + (state.origin || '____________________________')), make('p', '秘密の値はこの紙・スクリーンショット・チャットに記録しません。Google Cloudへ直接保存します。'))
+cover.append(make('p', 'ことばメモ · はじめての準備'), make('h1', '初回設定の\n図解マニュアル'), make('p', '一枚ずつ進めます。設置先・保存・接続は設定結果ファイルからアプリが確認します。'), make('p', 'Googleへのログインと請求先登録は、ご本人が行います。Cloudの利用量に応じて費用が発生します。'), make('p', '図は操作場所を説明するための再現図です。Googleの画面表示は変わる場合があります。'), make('p', 'プロジェクトID：' + (state.project || '____________________________')), make('p', 'アプリURL：' + (state.origin || '____________________________')), make('p', '秘密の値はこの紙・スクリーンショット・チャットに記録しません。Google Cloudへ直接保存します。'))
 pages.append(cover)
 for (const [index, step] of guide.steps.entries()) {
-  const page = make('section'); page.className = 'page'
+  const page = make('section'); page.className = 'page' + (step.id === 'credentials' ? ' compact' : '')
   page.append(make('p', `${index + 1} / ${guide.steps.length}　ことばメモ 初回設定`), make('h2', step.title), make('p', step.action))
   const image = make('div'); image.innerHTML = window.KotobaDiagram.diagram(step.diagram); page.append(image)
   const list = make('ol'); step.lines.forEach(line => list.append(make('li', line))); page.append(list)
@@ -18,7 +18,7 @@ for (const [index, step] of guide.steps.entries()) {
   if (step.extraRoute && state.project) page.append(make('p', guide.link({ route: step.extraRoute }, state)))
   if (step.snippet) page.append(make('pre', guide.snippet(step, state) || 'アプリURLに /auth/callback を付けます。PCガイドの「URLをコピー」を使ってください。'))
   if (step.command) page.append(make('p', 'PCガイドの「命令をコピー」を押してください。紙から長い命令を手入力する必要はありません。'))
-  page.append(make('p', '□ ' + (step.confirm || 'ログインし、テストメモの保存とスマホでの表示を確認しました')))
+  page.append(make('p', step.receive ? 'PCアプリが設定結果を読み取り確認します。手動の完了チェックは不要です。' : '□ ' + (step.confirm || 'ログインし、テストメモの保存とスマホでの表示を確認しました')))
   pages.append(page)
 }
 const help = make('section'); help.className = 'page'

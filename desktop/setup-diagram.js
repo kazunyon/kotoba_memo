@@ -4,14 +4,14 @@
     project: ['Google Cloud', 'プロジェクト名 ▼', 'プロジェクトID', 'ここを押して選ぶ'],
     billing: ['課金', '請求先アカウント', 'kotoba-memo → 登録済み', 'このプロジェクトを確認'],
     shell: ['Google Cloud', '＞_ Cloud Shell', '黒い画面へ貼り付け → Enter', '右上のこのボタン'],
-    address: ['Cloud Shellの結果', '準備できました', 'アプリURL: https://…run.app', 'このURLをコピー'],
+    address: ['ことばメモ：設定結果', '設定結果を受け取る', '設置先URLはアプリが取り出します', '受け取ったファイルを選ぶ'],
     branding: ['Google認証：ブランディング', 'アプリ名：ことばメモ', '連絡先：自分のメール', '入力して保存'],
     audience: ['Google認証：対象', 'テストユーザー', '＋ Add users', '自分のアカウントを追加'],
     scope: ['Google認証：データアクセス', 'スコープを追加または削除', 'openid・email・drive.appdata', 'この3つを選ぶ'],
     client: ['Google認証：クライアント', '＋ クライアントを作成', '種類：ウェブ アプリケーション', 'この種類を選ぶ'],
     callback: ['Google認証：クライアント', '承認済みのリダイレクト URI', '＋ URIを追加 → URLを貼り付け', '下側の欄に追加'],
     credentials: ['Cloud Shell', 'クライアントID：貼り付け', '秘密の値：表示せず受け取ります', '命令 → 2つの値を入力'],
-    finish: ['Cloud Shellの結果', '設置できました', 'アプリURL: https://…run.app', 'この表示を確認'],
+    finish: ['ことばメモ：接続確認', '設置先とGoogle設定を自動確認', '確認後、ログイン画面へ進みます', '設定結果ファイルを開く'],
     connect: ['ことばメモ', '接続を確認して開始', 'Googleでログイン → アカウント確認', '最後に保存とスマホを確認']
   }
   function diagram(kind) {

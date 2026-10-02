@@ -10,6 +10,7 @@ if [[ ! "$task_project" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ || ! "$task_region" =~
 fi
 task_root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$task_root"
+source "$task_root/deployment/result.sh"
 task_sa="${task_service}@${task_project}.iam.gserviceaccount.com"
 task_build_sa="${task_service}-build@${task_project}.iam.gserviceaccount.com"
 if ((${#task_service} > 24)); then echo 'サービス名は24文字以内にしてください。' >&2; exit 1; fi
@@ -66,7 +67,11 @@ task_origin=$(gcloud run services describe "$task_service" --region="$task_regio
 if [[ ! "$task_origin" =~ ^https://[a-zA-Z0-9.-]+$ ]]; then echo '設置先URLを確認できませんでした。' >&2; exit 1; fi
 echo "アプリURL: $task_origin"
 echo "Googleログインの戻り先: $task_origin/auth/callback"
-if [[ "$task_phase" == prepare ]]; then echo '準備できました。PCのガイドへ戻り、アプリURLを貼り付けてください。'; exit 0; fi
+if [[ "$task_phase" == prepare ]]; then
+  echo '準備できました。'
+  write_setup_result "$task_project" prepare "$task_origin"
+  exit 0
+fi
 for task_suffix in client-id client-secret session-key; do
   task_secret="${task_service}-${task_suffix}"
   if ! task_secret_state=$(gcloud secrets versions describe latest --secret="$task_secret" --project="$task_project" --format='value(state)' 2>"$task_error"); then
@@ -80,5 +85,7 @@ for task_suffix in client-id client-secret session-key; do
 done
 deploy_service "$task_service" --source=. --region="$task_region" --project="$task_project" --service-account="$task_sa" --build-service-account="$task_build_resource" --no-allow-unauthenticated --max-instances=2 --min-instances=0 --memory=512Mi --cpu=1 --set-env-vars="APP_ORIGIN=$task_origin" --set-secrets="GOOGLE_CLIENT_ID=${task_service}-client-id:latest,GOOGLE_CLIENT_SECRET=${task_service}-client-secret:latest,SESSION_KEY=${task_service}-session-key:latest" --quiet
 gcloud run services add-iam-policy-binding "$task_service" --region="$task_region" --project="$task_project" --member=allUsers --role=roles/run.invoker --condition=None --quiet >/dev/null
-echo '設置できました。PCガイドの「接続を確認して開始」を押してください。'
+echo '設置できました。設定結果ファイルを開いてください。接続はアプリが確認します。'
 echo "アプリURL: $task_origin"
+
+write_setup_result "$task_project" finish "$task_origin"

@@ -53,4 +53,8 @@ if ! secret_ready "$task_service-session-key"; then
 fi
 # Check that every write is visible before displaying completion.
 for task_suffix in client-id client-secret session-key; do secret_ready "$task_service-$task_suffix" || { echo '保存が完了していません。もう一度実行してください。' >&2; exit 1; }; done
-echo '認証設定を保存しました。PCガイドの「設定を反映する」へ進んでください。'
+echo '認証設定を保存しました。設置と権限設定を続けて自動実行します。'
+unset task_client_id task_client_secret
+rm -f "$task_error"
+trap - EXIT
+exec bash "$task_root/deployment/deploy.sh" "$task_project" asia-northeast1 "$task_service" finish

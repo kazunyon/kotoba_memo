@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
 if (location.protocol === 'file:' && location.pathname.endsWith('/setup-manual.html')) contextBridge.exposeInMainWorld('kotobaManual', { print: () => ipcRenderer.invoke('kotoba:print') })
 else if (location.protocol === 'file:') contextBridge.exposeInMainWorld('kotobaSetup', {
+  importResult: value => ipcRenderer.invoke('kotoba:result-import', value),
+  pendingResult: () => ipcRenderer.invoke('kotoba:result-pending'),
   connect: value => ipcRenderer.invoke('kotoba:connect', value),
   loadProgress: () => ipcRenderer.invoke('kotoba:progress-load'),
   saveProgress: value => ipcRenderer.invoke('kotoba:progress-save', value),

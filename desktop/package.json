@@ -1,6 +1,6 @@
 {
   "name": "kotoba-memo-desktop",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "main": "main.cjs",
   "description": "利用者自身のGoogle CloudとDriveで使うことばメモ",
@@ -23,6 +23,7 @@
       "main.cjs",
       "origin.cjs",
       "preload.cjs",
+      "setup-result.cjs",
       "setup.html",
       "setup.css",
       "setup.js",
@@ -46,6 +47,13 @@
         "ja_JP"
       ]
     },
-    "afterPack": "./verify-package.cjs"
+    "afterPack": "./verify-package.cjs",
+    "fileAssociations": [
+      {
+        "ext": "kotoba-setup",
+        "name": "ことばメモの設定結果",
+        "role": "Viewer"
+      }
+    ]
   }
 }
