@@ -1,10 +1,12 @@
 const { app, BrowserWindow, ipcMain, session, shell, dialog, clipboard, Menu } = require('electron')
 const { createServer } = require('node:http')
 const { randomBytes, createHash } = require('node:crypto')
-const { readFile, writeFile } = require('node:fs/promises')
+const { readFile, writeFile, stat } = require('node:fs/promises')
 const path = require('node:path')
 const { normalizeOrigin } = require('./origin.cjs')
 const guide = require('./setup-guide.js')
+const { parseResult, checkConnection } = require('./setup-result.cjs')
+let pendingResult = null, launchResultFile = ''
 let window, origin = '', profile, activeLogin
 const manualWindows = new Set()
 const settingsFile = () => path.join(app.getPath('userData'), 'connection.json')
@@ -17,10 +19,7 @@ function trusted(event, setup = false) {
 async function loadConnection(value) {
   origin = normalizeOrigin(value)
   profile = session.fromPartition('persist:kotoba-' + createHash('sha256').update(origin).digest('hex'))
-  const response = await profile.fetch(origin + '/api/config', { credentials: 'omit', signal: AbortSignal.timeout(15000) })
-  if (!response.ok) throw Error('接続先の設定を確認できません。')
-  const config = await response.json()
-  if (!config.configured || config.origin !== origin || !config.clientId) throw Error('ことばメモの設置先URLとGoogle設定を確認してください。')
+  await checkConnection(origin, (url, options) => profile.fetch(url, options))
   await writeFile(settingsFile(), JSON.stringify({ origin }), { mode: 0o600 })
   createWindow(profile)
   await window.loadURL(origin)
@@ -39,7 +38,7 @@ function external(value) { try { const url = new URL(value); if (url.protocol ==
 async function setup() { createWindow(); await window.loadFile(path.join(__dirname, 'setup.html')) }
 function safeProgress(value) {
   if (!value || value.version !== 1 || !Number.isInteger(value.index) || value.index < 0 || value.index >= guide.steps.length) throw Error('進み具合を保存できません。')
-  return { version: 1, index: value.index, project: guide.project(value.project || '') ? value.project : '', origin: guide.origin(value.origin || ''), completed: Array.isArray(value.completed) ? value.completed.filter(id => guide.steps.some(step => step.id === id)) : [] }
+  return { version: 1, index: value.index, project: guide.project(value.project || '') ? value.project : '', origin: guide.origin(value.origin || ''), verified: Array.isArray(value.verified) ? value.verified.filter(id => ['prepare', 'finish'].includes(id)) : [], completed: Array.isArray(value.completed) ? value.completed.filter(id => guide.steps.some(step => step.id === id)) : [] }
 }
 async function showManual(value = {}) {
   const manual = new BrowserWindow({ parent: window, width: 950, height: 850, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false } })
@@ -80,6 +79,28 @@ async function login() {
     })
   })
 }
+async function readResultFile(file, expected) {
+  if (!file.endsWith('.kotoba-setup') || (await stat(file)).size > 4096) throw Error('ことばメモの設定結果ファイルを選んでください。');
+  const result = parseResult(await readFile(file, 'utf8'), expected);
+  if (result.phase === 'finish') await checkConnection(result.origin, (url, options) => session.defaultSession.fetch(url, options));
+  return result;
+}
+async function openResultFile(file) {
+  try {
+    let expected = {};
+    try { expected = safeProgress(JSON.parse(await readFile(progressFile(), 'utf8'))); } catch { /* new setup */ }
+    pendingResult = await readResultFile(file, expected);
+    activeLogin?.(); await setup();
+  } catch (error) { if (!window) await setup(); await dialog.showMessageBox(window, { type: 'error', message: '設定結果を受け取れませんでした', detail: error.message }); }
+}
+ipcMain.handle('kotoba:result-pending', async event => { trusted(event, true); const result = pendingResult; pendingResult = null; return result; });
+ipcMain.handle('kotoba:result-import', async (event, expected) => {
+  trusted(event, true);
+  const safe = { project: guide.project(expected?.project || '') ? expected.project : '', origin: guide.origin(expected?.origin || '') };
+  const choice = await dialog.showOpenDialog(window, { title: 'Cloudから受け取った設定結果を選ぶ', properties: ['openFile'], filters: [{ name: 'ことばメモの設定結果', extensions: ['kotoba-setup'] }] });
+  if (choice.canceled) return null;
+  return readResultFile(choice.filePaths[0], safe);
+});
 ipcMain.handle('kotoba:connect', async (event, value) => { trusted(event, true); await loadConnection(value) })
 ipcMain.handle('kotoba:progress-load', async event => {
   trusted(event, true)
@@ -110,7 +131,8 @@ ipcMain.handle('kotoba:change', async event => {
 })
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  app.on('second-instance', () => { window?.show(); window?.focus() })
+  app.on('second-instance', (_event, argv) => { const file = argv.find(arg => arg.endsWith('.kotoba-setup')); if (file) void openResultFile(file); else { window?.show(); window?.focus() } })
+  app.on('open-file', (event, file) => { event.preventDefault(); if (app.isReady()) void openResultFile(file); else launchResultFile = file; })
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { role: 'fileMenu' }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
@@ -122,6 +144,8 @@ else {
         { label: '図解マニュアル・印刷', click: async () => { let value = {}; try { value = safeProgress(JSON.parse(await readFile(progressFile(), 'utf8'))) } catch { /* no progress yet */ } await showManual(value) } }
       ] }
     ]))
+    const resultFile = launchResultFile || process.argv.find(arg => arg.endsWith('.kotoba-setup'));
+    if (resultFile) { await openResultFile(resultFile); return }
     try { const saved = JSON.parse(await readFile(settingsFile(), 'utf8')); if (saved.origin) { await loadConnection(saved.origin); return } } catch { /* first run or unavailable deployment */ }
     origin = ''; await setup()
   }).catch(error => { dialog.showErrorBox('ことばメモ', error.message); app.quit() })

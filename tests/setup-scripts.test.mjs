@@ -14,7 +14,7 @@ const key=(()=>{const flag=args.find(x=>x.startsWith('--secret='));return flag?f
 if(args[0]==='services') {if(process.env.KOTOBA_TEST_QUOTA==='1'&&!fs.existsSync(path.join(folder,'retried'))){fs.writeFileSync(path.join(folder,'retried'),'yes');console.error('429 RATE_LIMIT_EXCEEDED');process.exit(1)}process.exit(0)}
 if(args[0]==='iam')process.exit(0);
 if(args[0]==='projects')process.exit(0);
-if(args[0]==='run'&&args[1]==='services'&&args[2]==='describe') {if(process.env.KOTOBA_TEST_DENIED==='1'){console.error('PERMISSION_DENIED');process.exit(1)}if(process.env.KOTOBA_TEST_NEW==='1'&&!fs.existsSync(path.join(folder,'service'))){console.error('NOT_FOUND');process.exit(1)}console.log('https://my-kotoba.example');process.exit(0)}
+if(args[0]==='run'&&args[1]==='services'&&args[2]==='describe') {if(process.env.KOTOBA_TEST_DENIED==='1'){console.error('PERMISSION_DENIED');process.exit(1)}if(process.env.KOTOBA_TEST_NEW==='1'&&!fs.existsSync(path.join(folder,'service'))){console.error('NOT_FOUND');process.exit(1)}console.log('https://my-kotoba.a.run.app');process.exit(0)}
 if(args[0]==='run'&&args[1]==='deploy'){fs.writeFileSync(path.join(folder,'service'),'yes');console.log('Done');process.exit(0)}
 if(args[0]==='run')process.exit(0);
 if(args[0]==='secrets'&&args[1]==='versions'&&args[2]==='describe'){const name=args.find(x=>x.startsWith('--secret=')).slice(9);if(fs.existsSync(path.join(folder,name))){console.log('ENABLED');process.exit(0)}console.error('NOT_FOUND');process.exit(1)}
@@ -28,7 +28,7 @@ async function fixture(t) {
   t.after(() => rm(dir, { recursive: true, force: true }))
   await writeFile(join(dir, 'gcloud'), mock); await chmod(join(dir, 'gcloud'), 0o755)
   await writeFile(join(dir, 'sleep'), '#!/usr/bin/env bash\nexit 0\n'); await chmod(join(dir, 'sleep'), 0o755)
-  const env = { ...process.env, PATH: dir + ':' + process.env.PATH, KOTOBA_TEST_DIR: dir }
+  const env = { ...process.env, PATH: dir + ':' + process.env.PATH, KOTOBA_TEST_DIR: dir, KOTOBA_SETUP_RESULT_DIR: dir }
   return { dir, env, run: (script, args, extra = {}) => spawnSync('bash', [join(root, 'deployment', script), ...args], { env: { ...env, ...extra }, encoding: 'utf8' }) }
 }
 test('credentials are read off command history, missing versions are saved and reruns preserve the session key', { skip: process.platform === 'win32' }, async t => {
@@ -36,6 +36,9 @@ test('credentials are read off command history, missing versions are saved and r
   const id = '1234567890-ownclient.apps.googleusercontent.com', secret = 'GOCSPX-fake-secret-for-automated-test'
   const first = spawnSync('bash', [join(root, 'deployment/setup.sh'), 'credentials', 'my-project'], { env: f.env, input: id + '\n' + secret + '\n', encoding: 'utf8' })
   assert.equal(first.status, 0, first.stderr)
+  const receipt = JSON.parse(await readFile(join(f.dir, 'kotoba-my-project-finish.kotoba-setup'), 'utf8'))
+  assert.deepEqual(receipt, { version: 1, project: 'my-project', phase: 'finish', origin: 'https://my-kotoba.a.run.app' })
+  assert.equal(JSON.stringify(receipt).includes(secret), false)
   assert.match(first.stdout, /認証設定を保存しました/)
   assert.equal((first.stdout + first.stderr).includes(secret), false)
   assert.equal((await readFile(join(f.dir, 'calls'), 'utf8')).includes(secret), false)
@@ -55,6 +58,8 @@ test('prepare retries quotas and explicitly sets the dedicated build identity', 
   assert.match(calls, /roles\/run.builder/)
   assert.match(calls, /--build-service-account=projects\/my-project\/serviceAccounts\/kotoba-memo-build@my-project.iam.gserviceaccount.com/)
   assert.equal(calls.includes('allUsers'), false)
+  const receipt = JSON.parse(await readFile(join(f.dir, 'kotoba-my-project-prepare.kotoba-setup'), 'utf8'))
+  assert.equal(receipt.phase, 'prepare'); assert.equal(receipt.project, 'my-project')
 })
 test('finish requires every enabled secret and access-denied is not mistaken for a new service', { skip: process.platform === 'win32' }, async t => {
   const f = await fixture(t)
