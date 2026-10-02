@@ -1,0 +1,6 @@
+body { margin: 0; font-family: system-ui, sans-serif; color: #223247; background: #f2f5f7; }
+main { max-width: 640px; margin: 8vh auto; padding: 32px; background: #fff; border-radius: 16px; }
+label, input, button { display: block; width: 100%; box-sizing: border-box; margin: 16px 0; }
+input, button { min-height: 52px; padding: 12px; font-size: 18px; border-radius: 8px; }
+input { border: 1px solid #65778a; } button { background: #17645e; color: white; border: 0; cursor: pointer; }
+button:disabled { opacity: .65; } #status { overflow-wrap: anywhere; }

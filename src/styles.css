@@ -15,3 +15,9 @@
 .sync-indicator.waiting{background:#fff7e8;color:#946200}
 .sync-indicator svg{stroke-width:2.3}
 .sync-indicator small{font-size:10px;font-weight:800;line-height:1.15;white-space:nowrap}
+/* Initial setup uses large click/tap targets and accepts pasted URLs. */
+.account-gate { max-width: 680px; margin: 8vh auto; padding: 28px; background: white; border-radius: 16px; }
+.account-gate button { display: block; min-height: 48px; margin: 16px 0; width: 100%; font-size: 1.05rem; }
+.account-email { font-size: 1.25rem; font-weight: 700; overflow-wrap: anywhere; }
+.connection-url, .connection-details { overflow-wrap: anywhere; }
+.connection-details { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; font-size: .9rem; }
