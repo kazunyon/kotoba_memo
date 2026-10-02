@@ -1,4 +1,4 @@
-Unicode true
+﻿Unicode true
 !include "MUI2.nsh"
 !ifndef APP_URL
   !define APP_URL "https://kazunyon.github.io/kotoba_memo/"
