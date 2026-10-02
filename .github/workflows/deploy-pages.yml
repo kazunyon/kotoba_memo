@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: npm ci && npm run build
         env:
-          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID || '826513716811-7dsrl9esn05nf7hlsirn1lenv70gl96p.apps.googleusercontent.com' }}
           VITE_BASE_PATH: /kotoba_memo/
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
