@@ -1,52 +1,50 @@
-# ことばメモ（Google Drive版）
+# ことばメモ（利用者自身のGoogle Cloud・Google Drive版）
 
-失語症のある方が、思い出したいことば・説明・PC/Linuxの操作手順を確認する個人用アプリです。
-[kazunyon/situgosyou](https://github.com/kazunyon/situgosyou) の main（元コミットは開発記録参照）を基に、同じ画面・操作を引き継ぎ、同期先を各利用者のGoogle Driveへ変更しています。作者のSupabaseは使いません。
+既存のメモ編集・画像付き手順・カテゴリ・読み上げ・JSONバックアップを維持し、利用者自身のGoogle Cloudにアプリを設置する構成へ変更しました。作者の公開URL・Googleプロジェクト・Supabaseに依存しません。
 
-## そのまま使える機能
+- **PC**：専用のWindowsアプリをインストールし、自分の設置先URLを入力します。Googleログインは外部ブラウザで行います。
+- **スマホ**：同じURLを開き、同じGoogleアカウントでログインします。PWAのホーム画面追加に対応します。
+- **保存**：本人のGoogle Driveのアプリ専用領域。端末キャッシュは接続先・OAuthクライアント・アカウントごとに分離します。
+- **Google認証**：Cloud側の認可コードフロー＋PKCE。秘密情報は自分のSecret Managerへ登録します。Googleの生のトークンはWeb画面へ返しません。
+- **アカウント確認**：起動時にメールアドレス・接続先・保存先を表示し、「このアカウントで開始」を押すまでメモを読み込みません。
+- **ログアウト**：端末のそのアカウントのキャッシュを削除します。未送信データは先にバックアップしてください。
 
-- 日常用／PC・Linux用、登録・編集・削除、検索、星マーク、タイトル色、表示番号・並べ替え
-- カテゴリの追加・名称変更（最大10件）
-- PC/Linuxの画像付き手順（最大10件）、画像選択・Snipping Toolから貼り付け
-- Markdown表示、Wikipediaからの意味・説明取得、音声入力・読み上げ
-- 元アプリと互換性のあるJSONバックアップ・復元
-- PC／スマホ対応、PWAのホーム画面追加
+## 手順
 
-## Google版で変わるところ
+1. [自分のGoogle Cloudへ設置](doc/distributor_setup.md)
+2. [PC・スマホで利用](doc/user_guide.md)
+3. [同期の仕様と制限](doc/sync_design.md)
+4. [検証結果・未確認事項](doc/verification.md)
 
-- メール確認コードの代わりに「Googleでログイン」を押します。
-- 同じGoogleアカウントの端末間で、メモ・画像・カテゴリを同期します。
-- Google Driveのアプリ専用領域に保存します。フォルダーの作成やファイル操作は不要です。
-- ログイン後のデータと未送信の変更を端末のIndexedDBにも保存します。
-- 通信復帰・画面復帰・表示中の約30秒ごとに再確認します。即時のリアルタイム同期ではありません。
-- ブラウザを開き直したときやGoogleの接続期限が切れたときは「Googleに再接続」を押します。秘密キーや更新トークンをブラウザに保存する方式にはしていません。
-- 同じ記録の変更競合を送信前に検出した場合は、バックアップ後に共有先／端末の内容を選びます。完全同時送信では後からDriveに作成された変更が優先されます。詳細は[同期仕様](doc/sync_design.md)。
+**旧版から移行する前にJSONバックアップを保存してください。** OAuthプロジェクトが変わると、旧アプリのDrive専用領域をそのまま読むことはできません。新しい設置先でバックアップを復元します。
 
-## 最初に読むもの
+## 開発・ビルド
 
-- [一般の利用者のインストール・操作手順](doc/user_guide.md)
-- [配布者が一度だけ行うGoogle設定・公開手順](doc/distributor_setup.md)
-- [同期の仕様・制限](doc/sync_design.md)
-- [確認済みの内容・未確認の内容](doc/verification.md)
-
-Google OAuthクライアントID未設定では端末内だけで使えます。これはGoogle同期の完了状態ではありません。設定済みの版では先にGoogleでログインしてください。
-
-## 開発環境
-
-Node.js 20以上を準備して実行します。
+Node.js 22以上を使います。
 
 ```sh
 npm ci
-# .env.example を .env.local へコピーし、配布者のGoogleクライアントIDを設定
-npm run dev -- --host 127.0.0.1
 npm test
 npm run build
+# .env.server.example を .env.server へコピーし、自分の設定を入力
+npm start
+# http://localhost:8080
 ```
 
-GitHub Pages用のパスは `/kotoba_memo/` です。他のHTTPS公開先では `VITE_BASE_PATH=/` にします。GitHubは開発・ビルドに使う場所です。利用者には公開URLとsetup.exeだけを案内できます。
+OAuthのリダイレクトURIは開発時 `http://localhost:8080/auth/callback` です。SESSION_KEYは `.env.server.example` の生成コマンドで作成します。秘密情報をVITE_変数へ入れないでください。
 
-## Windowsのsetup.exe
+Viteで編集する場合は、サーバーを8080で動かし、APP_ORIGINとOAuthリダイレクトURIを `http://localhost:5173` に変更して `npm run dev` を実行します。APIと認証は8080へ転送されます。
 
-NSISのセットアップソースとWindowsビルド用のGitHub Actionsを収録しています。Windows版は**公開されたWebアプリへのデスクトップ・スタートメニューの入口をインストール**します。アプリ本体をPCへ同梱するネイティブ版ではありません。PWAのオフライン機能は初回アクセス後にブラウザへ保存されます。スマホにはsetup.exeを使いません。
+Windowsアプリの依存はWeb版と分けています。
 
-Actionsの「Build Windows setup.exe」を手動実行し、成功後のアーティファクトから取得します。署名・Windows実機での導入確認・一般配布は別途必要です。
+```sh
+npm install --prefix desktop
+npm run desktop
+# Windows上で実行
+npm run dist:windows
+# release/kotoba-memo-setup.exe
+```
+
+GitHub Actionsの「Build Windows setup.exe」でも生成できます。セットアップはElectronアプリを同梱し、専用の保存領域と接続設定を持ちます。固定URLを開く旧NSISスクリプトとGitHub Pagesへの自動公開は削除しました。
+
+Cloud用の[Dockerfile](Dockerfile)と[設置スクリプト](deployment/deploy.sh)を収録しています。設置には本人のGoogle Cloud設定・課金設定が必要です。コード署名、実際のGoogle OAuth、Windowsでのインストール、PC・スマホ間の実機同期は[検証記録](doc/verification.md)を確認してください。

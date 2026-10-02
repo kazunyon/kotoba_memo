@@ -1,9 +1,12 @@
-import { getAccessToken } from './google-auth'
+import { authHeaders, expireGoogleSession } from './google-auth'
 import { validateEvent, type DriveEvent, type RemoteEvent } from './drive-model'
 const PREFIX = 'kotoba-event-v1-'
 type FileInfo = { id: string; name: string; createdTime: string }
 export async function driveRequest(account: string, url: string, init: RequestInit = {}): Promise<Response> {
-  const result = await fetch(url, { ...init, headers: { ...init.headers, Authorization: 'Bearer ' + getAccessToken(account) }, signal: AbortSignal.timeout(30000) })
+  const target = new URL(url)
+  if (target.origin !== 'https://www.googleapis.com') throw Error('不正な保存先です。')
+  const result = await fetch('/api/drive' + target.pathname + target.search, { ...init, headers: { ...init.headers, ...authHeaders(account) }, signal: AbortSignal.timeout(30000) })
+  if (result.status === 401) expireGoogleSession()
   if (!result.ok) throw Error(result.status === 401 ? 'Googleに再接続してください。未送信データは端末に残っています。' : result.status === 403 ? 'Google Driveへのアクセス権限・空き容量を確認してください。' : `Google Driveと通信できません（${result.status}）。未送信データは端末に残っています。`)
   return result
 }

@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "dev": "vite",
+    "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node --env-file=.env.server server/app.mjs",
+    "start:cloud": "node server/app.mjs",
+    "desktop": "npm --prefix desktop start",
+    "dist:windows": "npm --prefix desktop run dist:windows"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -21,5 +25,7 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.21.1"
-  }
+  },
+  "description": "利用者自身のGoogle CloudとDriveで使うことばメモ",
+  "author": "Kotoba Memo contributors"
 }

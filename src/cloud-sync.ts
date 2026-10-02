@@ -1,4 +1,4 @@
-import { getAccount, hasGoogleAccess } from './google-auth'
+import { getAccount, hasGoogleAccess, getProfileNamespace } from './google-auth'
 import { appendDriveEvent, generateDriveId, readDriveEvents } from './google-drive'
 import { foldEvents, type CloudMemoRow, type DriveEvent, type RemoteEvent } from './drive-model'
 import type { MemoCategory } from './types'
@@ -52,7 +52,7 @@ export function resetCloudSyncStatus() { currentStatus = { pending: 0, conflict:
 function context() {
   const account = getAccount()
   if (!account) return null
-  return { key: import.meta.env.VITE_GOOGLE_CLIENT_ID + ':' + account.id, accountId: account.id }
+  return { key: getProfileNamespace() + ':' + account.id, accountId: account.id }
 }
 function serialized<T>(work: () => Promise<T>): Promise<T> {
   const locked = async (): Promise<T> => navigator.locks ? await navigator.locks.request('kotoba-google-cache-v1', work) : await work()
@@ -157,5 +157,19 @@ export async function resolveCloudConflict(choice: 'remote' | 'local') {
     if (state.pendingCategories) state.pendingCategories.expected = state.categoryRevision
     state.conflict = false; state.error = ''; state.batch = null
     await write(ctx.key,state); await flush(ctx,state)
+  })
+}
+
+export async function clearCloudCache(accountId: string) {
+  const key = getProfileNamespace() + ':' + accountId
+  await serialized(async () => {
+    const db = await database()
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction('profiles', 'readwrite')
+      transaction.objectStore('profiles').delete(key)
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = transaction.onabort = () => reject(Error('端末のデータを削除できませんでした。'))
+    })
+    resetCloudSyncStatus()
   })
 }

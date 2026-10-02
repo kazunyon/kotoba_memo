@@ -3,42 +3,28 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - installer/windows/**
-      - .github/workflows/windows-installer.yml
+    paths: ['desktop/**', 'package*.json', '.github/workflows/windows-installer.yml']
   pull_request:
-    paths:
-      - installer/windows/**
-      - .github/workflows/windows-installer.yml
+    paths: ['desktop/**', 'package*.json', '.github/workflows/windows-installer.yml']
+permissions:
+  contents: read
 jobs:
   installer:
     runs-on: windows-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Check Japanese source encoding
-        shell: pwsh
-        run: |
-          $sourcePath = Join-Path $PWD 'installer/windows/setup.nsi'
-          $sourceBytes = [System.IO.File]::ReadAllBytes($sourcePath)
-          if ($sourceBytes.Length -lt 3 -or $sourceBytes[0] -ne 0xEF -or $sourceBytes[1] -ne 0xBB -or $sourceBytes[2] -ne 0xBF) {
-            throw 'NSIS source must have a UTF-8 BOM.'
-          }
-          $utf8Strict = [System.Text.UTF8Encoding]::new($false, $true)
-          $sourceText = $utf8Strict.GetString($sourceBytes)
-          $appName = -join ([char[]](0x3053, 0x3068, 0x3070, 0x30E1, 0x30E2))
-          if (-not $sourceText.Contains('Name "' + $appName + '"')) {
-            throw 'Japanese application name does not match.'
-          }
-      - name: Install NSIS
-        run: choco install nsis --no-progress -y
-      - name: Build setup.exe
-        shell: pwsh
-        run: |
-          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /INPUTCHARSET UTF8 installer/windows/setup.nsi
-          if ($LASTEXITCODE -ne 0) { throw 'NSIS build failed.' }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm install --prefix desktop
+      - run: npm run dist:windows
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: actions/upload-artifact@v4
         with:
           name: kotoba-memo-windows-setup
-          path: installer/windows/kotoba-memo-setup.exe
+          path: release/kotoba-memo-setup.exe
+          if-no-files-found: error

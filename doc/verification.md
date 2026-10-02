@@ -1,29 +1,54 @@
-# 開発記録・確認範囲
+# 検証記録（2026年10月2日）
 
-## 引き継いだ元版
+## 実装した内容
 
-- リポジトリ：kazunyon/situgosyou
-- mainコミット：28aa7d4d1422f78f810789e20ba91a26c3313df2
-- 新しいリポジトリ：kazunyon/kotoba_memo
-- 画面レイアウト、CSS、登録・編集・検索・画像処理・読み上げ・バックアップ形式を引き継いだ。
-- Supabaseの依存、SQL・旧インストーラー・旧配布物は新リポジトリへ含めていない。
+- 利用者自身のCloud Runで動く認証・Drive中継サーバー。
+- OAuthクライアントの実行時設定、認可コード＋PKCE、外部ブラウザからPCへの証明付き引き渡し。
+- Googleの生トークンをWebへ返さない暗号化HttpOnlyセッション。更新トークンは暗号化されたセッション内で運ばれ、復号・利用はCloud側だけで行います。セッションは7日間です。
+- メモを読み込む前のアカウント確認、接続先・保存先表示。
+- 接続先・OAuthクライアント・アカウントで分離したキャッシュ、ログアウト・接続先変更時の削除。
+- 専用のElectron PCアプリ、初回URL設定、Windowsセットアップ生成ワークフロー。
+- 同じ設置先をスマホで開くQRコード、Cloud設置スクリプト、マニュアル。
 
-## 自動確認
+## 確認できたこと
 
-- `npm test`：12件成功。
-- `npm run build`：TypeScript検査・Viteビルド・PWA生成成功。
-- GitHub ActionsのCheck applicationでもテスト・ビルド成功（実行36939056785）。
-- Windows runnerでNSISによるsetup.exe生成成功（実行36939056782）。Artifactsのkotoba-memo-windows-setupから取得できる。
-- 2端末を模したテストで、実際のcloud-sync.tsとgoogle-drive.tsを実行。GoogleのHTTP応答とIndexedDBはテスト用に置き換えた。
-- 双方向反映、オフラインキュー、競合選択、保存済みなのに応答を受信できない場合の再試行、応答未確認のまま続けた編集、削除、別アカウント分離を確認。
-- メモ単位の同時変更の結合、削除フラグ、カテゴリの空一覧、不正データの拒否、元の読み上げ処理も確認。
+`node --test tests/server.test.mjs`：4件成功。
 
-## 未確認
+- セッション改ざん・期限切れ・別設置先・別用途の拒否。
+- OAuth state確認、PKCE、秘密情報の非公開、CSRF拒否、アカウント違いの拒否。
+- 実際のローカルHTTP経路でのWebログイン・PC用引き渡し・Drive中継・ログアウト。Googleの応答はテスト用の模擬応答です。
+- QR行列をReportLabの独立実装と比較。22、51、134バイトの入力で一致。スマホカメラによる読取は未確認。
 
-- 実際のGoogle OAuthログイン、Drive APIへの保存・読込、第三者アカウントへの公開。
-- 実際のWindows PCとiPhone・Android間の同期。
-- デスクトップ／スマホの描画と実操作。検証環境にChromiumがなく、Playwright用ブラウザのダウンロードも失敗したため、ブラウザによる画面確認は完了していない。CSS・主な画面構成は元版を引き継いでいるが、表示確認済みとは扱わない。
-- Windows setup.exeのコード署名、Windows実機でのインストールとアンインストール。
-- 大量データ・長期間利用時の容量と速度。
+既存の同期・データモデル・読み上げと追加したアカウント確認のテスト13件も、Node 24の`stripTypeScriptTypes`で一時コピーを変換した代替実行で成功しました。元の`npm test`が成功したという意味ではありません。
 
-Google OAuthクライアントIDを配布者が設定し、実アカウントで利用者向け手順の同期確認を行うまで、Google同期版の動作確認が完了したとは扱わない。
+`node --check`でサーバーとPC側JavaScriptの構文、`bash -n`で設置スクリプトの構文を確認しました。
+
+## 未確認・作業環境の制限
+
+npmからの依存取得が通信制限で拒否されました。このため通常の`npm test`・TypeScript型検査・Vite本番ビルド・Electron起動・Windowsセットアップ生成は未完了です。rootのpackage-lockは既存Web依存と整合させています。PCの依存はdesktop/package.jsonへ分離し、バージョンを固定していますが、desktopのロックファイル生成は未完了です。
+
+以下は実環境で確認が必要です。
+
+- 実際のGoogle OAuth・更新トークン・Driveへの保存。
+- 自分のCloud Runへ設置し、Secret Manager設定で起動できること。
+- Windowsのインストール、外部ブラウザからPCアプリへの復帰、専用Cookieの保持。
+- PC・スマホ間の実機同期、QR読取、PWA追加。
+- コード署名、Windows警告、アンインストールと保存領域の扱い。
+- React画面全体のデスクトップ・スマホ表示。
+
+## 初回設定画面の操作確認
+
+Browserプラグインがないため既存PlaywrightとシステムChromiumを使用しました。管理ポリシーでfile://の閲覧は拒否されたため、同じHTML/CSS/JSをローカルHTTPで配信して画面単体を確認しました。Electronの実行確認ではありません。
+
+画面URLはローカルHTTPの `/setup.html`、表示サイズは1100×850と390×844です。接続処理は模擬ブリッジです。
+
+| 確認 | 結果 |
+|---|---|
+| タイトル・空白でない画面 | 成功 |
+| フレームワークエラー表示 | なし |
+| JavaScript・コンソールエラー | なし |
+| URL入力→接続ボタン→エラー表示→再試行可能 | 成功 |
+| 狭い画面での横方向のはみ出し | なし |
+| スクリーンショット | `/tmp/kotoba-setup-desktop.png` と `/tmp/kotoba-setup-narrow.png` |
+
+実機同期の成功や配布可能なsetup.exeの完成は断定しません。

@@ -3,12 +3,14 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ command, mode }) => ({
-  // GitHub Pages はリポジトリ名のパス配下で配信される。
-  base: command === 'build' ? (loadEnv(mode, '.', '').VITE_BASE_PATH || '/kotoba_memo/') : '/',
+  // Cloud Run serves the application at the root; API traffic is never cached.
+  base: command === 'build' ? (loadEnv(mode, '.', '').VITE_BASE_PATH || '/') : '/',
+  server: { proxy: { '/api': 'http://localhost:8080', '/auth': 'http://localhost:8080' } },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: { navigateFallbackDenylist: [/^\/api\//, /^\/auth\//] },
       manifest: {
         name: 'ことばメモ',
         short_name: 'ことばメモ',

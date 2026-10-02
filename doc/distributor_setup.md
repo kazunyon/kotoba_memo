@@ -1,54 +1,77 @@
-# 配布者のGoogle連携・公開準備
+# 利用者自身のGoogle Cloudへ設置する手順
 
-## 最初に必要なもの
+この版は、設置する人が所有するGoogle Cloudプロジェクト・OAuthクライアントを使います。開発者の公開アプリを利用する方式ではありません。PC・スマホは同じ設置先へ接続します。
 
-- 配布を管理するGoogleアカウント
-- Google Cloudプロジェクト（利用者一人ずつではなく、アプリ用に一つ）
-- アプリを公開するHTTPSのURL
-- 開発用PCとNode.js 20以上
-- Windowsインストーラーを作る場合はNSIS、または付属のWindows用GitHub Actions
+## 1. 準備
 
-利用者のDriveデータは各自のGoogleアカウントへ保存します。配布者のCloudプロジェクトはアプリの識別と利用許可に使います。クライアントIDは公開識別子です。クライアントシークレット・サービスアカウントキーは使いません。
+- 自分のGoogleアカウントでGoogle Cloudプロジェクトを作成し、課金を有効にします。
+- 予算と通知を設定します。Cloud Runの最小インスタンス0は無課金の保証ではありません。Cloud Build・Artifact Registry・Secret Managerなどの費用も確認します。
+- ソース一式とGoogle Cloud CLIを準備し、CLIが**自分のプロジェクトに操作権限のあるアカウント**を使っていることを確認します。
+- 設置先の公開URLにはインターネットからアクセスできる必要があります。メモを読むAPIにはGoogleログインが必要です。組織のポリシーでCloud Runの一般公開を禁止している場合は、その管理者との調整が必要です。
 
-## 一度だけ行う準備
+## 2. 設置先URLを発行
 
-1. Google Cloud Consoleでアプリ用プロジェクトを作成します。
-2. 「APIとサービス」のライブラリでGoogle Drive APIを有効にします。
-3. Google Auth Platformでアプリ名、サポートメール、公開対象、連絡先を設定します。個人のGoogleアカウントへ配布する場合は外部向けを選びます。
-4. データアクセスに `openid`、`email`、`https://www.googleapis.com/auth/drive.appdata` を設定します。Drive全体へのアクセス権限は不要です。
-5. OAuthクライアントを「ウェブアプリケーション」として作成します。
-6. 承認済みJavaScript生成元に、公開URLの生成元を設定します。このリポジトリのPagesなら `https://kazunyon.github.io` です。`/kotoba_memo/` のパスは生成元に入れません。
-7. ローカル検証には `http://localhost:5173` と、使う場合は `http://127.0.0.1:5173` も追加します。ポート番号も合わせます。
-8. テスト段階では、利用するGoogleアカウントをテストユーザーへ登録します。
-9. クライアントIDを `.env.local` の `VITE_GOOGLE_CLIENT_ID` に入れます。配布する前に正式な公開設定、アプリのホームページ・プライバシーポリシー、必要な確認手続きを整えます。Google側の表示は変わることがあるため公式案内も確認してください。
+ソースのルートで実行します。PROJECT_IDは自分のプロジェクトIDへ置き換えます。
 
-一般の利用者にこの操作を依頼しないでください。
+```sh
+bash deployment/deploy.sh PROJECT_ID asia-northeast1
+```
 
-## GitHub Pagesを公開先として使う場合
+スクリプトは必要なAPIと専用サービスアカウントを作成し、最初は未設定の案内だけを返す**非公開の準備サービス**を設置します。表示された `https://…run.app` を記録してください。初回は必要な秘密情報がないため、準備段階で正常終了します。
 
-1. リポジトリのSettings → Secrets and variables → Actions → Variablesへ進みます。
-2. Repository variable `VITE_GOOGLE_CLIENT_ID` を追加します。
-3. Settings → PagesのSourceをGitHub Actionsにします。
-4. mainに反映し、Deploy to GitHub Pagesが成功することを確認します。
-5. `https://kazunyon.github.io/kotoba_memo/` を開き、Googleでログインします。
+Cloud Buildを初めて使う場合はビルド用のサービスアカウントに追加の権限設定が必要な場合があります。gcloudのエラーで指定されたアカウントと不足権限を確認し、そのプロジェクトの管理者が設定してください。秘密情報を読む権限はアプリ専用サービスアカウントへ、3つの秘密情報それぞれに限定して付与します。
 
-利用者はGitHubの画面を開かず、上のアプリURLを使います。他のHTTPSホスティングでも利用できます。
+## 3. Google OAuthを設定
 
-## setup.exeを作る
+Google Auth Platformで以下を設定します。画面の表記はGoogle側の変更により異なることがあります。
 
-1. Actions → Build Windows setup.exe → Run workflowを実行します。
-2. 成功した実行のArtifactsにある `kotoba-memo-windows-setup` をダウンロードします。
-3. ZIPから `kotoba-memo-setup.exe` を取り出します。
-4. Windowsで導入・起動・アンインストールを確認します。
-5. 一般配布の前にコード署名を検討します。未署名の配布物はWindowsの確認画面が出る場合があります。
+1. アプリ名・問い合わせ先・対象ユーザーを設定します。個人アカウントで利用する場合は外部ユーザーを選択します。
+2. テスト中は自分のGoogleアカウントをテストユーザーに登録します。
+3. スコープに `openid`、メールアドレス、`https://www.googleapis.com/auth/drive.appdata` を設定します。Drive全体への権限は要求しません。
+4. **ウェブアプリケーション**のOAuthクライアントを作成します。デスクトップ用のクライアントではありません。
+5. 承認済みのリダイレクトURIへ、発行されたURLに `/auth/callback` を付けて登録します。
 
-別の公開先を使う場合は `installer/windows/setup.nsi` の `APP_URL` を変更します。このインストーラーは公開URLを開くショートカット方式です。署名済みexeやネイティブ同梱版が完成しているという意味ではありません。
+例：`https://kotoba-xxxxx.a.run.app/auth/callback`
 
-## 最終確認
+この方式はサーバーで認証するため、ブラウザ用Google Identity ServicesのJavaScriptクライアントID設定は不要です。PCでGoogleログインした後の127.0.0.1への戻り先は、アプリのサーバーからの引き渡しです。Googleに登録するリダイレクトURIは上記のHTTPS URLだけです。
 
-[利用者向け手順](user_guide.md)の双方向同期を、別々のPC・スマホで試します。第三者の新しいアカウントでもログインできることを確認します。Google側の公開設定と実機確認が終わるまでは、一般向けの完成版として配布しないでください。
+テスト状態では更新トークンの有効期間や利用者数に制限があります。長期運用前に公開状態・対象スコープ・Googleの検証要否を確認してください。再同意が必要な場合、メモをバックアップしてから再接続します。
 
-公式資料：
-- https://developers.google.com/workspace/drive/api/guides/appdata
-- https://developers.google.com/workspace/drive/api/guides/api-specific-auth
-- https://developers.google.com/identity/oauth2/web/guides/use-token-model
+## 4. Secret Managerへ登録
+
+Secret Managerの画面で次の3つの名前の秘密情報を作り、それぞれ有効なバージョンを追加します。サービス名を変えた場合、`kotoba-memo` 部分も同じ名前へ変更してください。
+
+| 秘密情報名 | 内容 |
+|---|---|
+| `kotoba-memo-client-id` | 自分のOAuthクライアントID |
+| `kotoba-memo-client-secret` | 自分のOAuthクライアントシークレット |
+| `kotoba-memo-session-key` | 下記で生成するセッション暗号化キー |
+
+```sh
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+出力をそのままセッションキーの値として登録します。ソース・セットアップ・メール・QRコードへ秘密情報を入れません。セッションキーを変更すると、既存のログイン状態は無効になり再ログインが必要になります。
+
+## 5. 設定済みのアプリを設置
+
+同じコマンドをもう一度実行します。
+
+```sh
+bash deployment/deploy.sh PROJECT_ID asia-northeast1
+```
+
+設定済みの版を設置してから一般公開します。最後に表示されるURLをブラウザで開きます。`/api/config` は公開設定の確認用で、クライアントシークレットやセッションキーは返しません。
+
+更新時も同じコマンドで再設置できます。既存のOAuth設定と設置先URLを維持してください。実行前にCloud CLIのアカウントとプロジェクトを確認します。
+
+## 6. PCとスマホで確認
+
+[利用手順](user_guide.md)に従い、PCへセットアップを導入して自分のURLを入力します。ログイン後、表示されたメールアドレスを確認します。スマホは設定画面のQRコードから同じURLを開きます。
+
+- 新しいアカウントでは空のメモ一覧になること。
+- PCで作ったメモがスマホに表示され、スマホでの編集がPCへ反映されること。
+- 別アカウントで元のメモが表示されないこと。
+- ログアウトと接続先変更後に端末のデータが残らないこと。
+
+Windowsアプリの生成はREADMEのビルド手順またはGitHub Actionsを使います。この作業環境で生成済みのsetup.exeがあるとは限りません。[検証記録](verification.md)を確認してください。
