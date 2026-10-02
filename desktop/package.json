@@ -1,6 +1,6 @@
 {
   "name": "kotoba-memo-desktop",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "main": "main.cjs",
   "description": "利用者自身のGoogle CloudとDriveで使うことばメモ",
@@ -20,8 +20,17 @@
       "output": "../release"
     },
     "files": [
-      "*.cjs",
-      "setup.*",
+      "main.cjs",
+      "origin.cjs",
+      "preload.cjs",
+      "setup.html",
+      "setup.css",
+      "setup.js",
+      "setup-guide.js",
+      "setup-diagram.js",
+      "setup-manual.html",
+      "setup-manual.css",
+      "setup-manual.js",
       "package.json"
     ],
     "win": {
@@ -36,6 +45,7 @@
       "installerLanguages": [
         "ja_JP"
       ]
-    }
+    },
+    "afterPack": "./verify-package.cjs"
   }
 }
