@@ -11,6 +11,8 @@
 
 ## 手順
 
+PC版0.3.0では、初回設定を12画面の紙芝居形式で案内します。コピー・設定ページを開く・続きから再開・印刷用図解に対応します。詳しくは[初回設定ガイド](doc/guided_setup.md)を参照してください。
+
 1. [自分のGoogle Cloudへ設置](doc/distributor_setup.md)
 2. [PC・スマホで利用](doc/user_guide.md)
 3. [同期の仕様と制限](doc/sync_design.md)

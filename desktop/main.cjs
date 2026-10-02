@@ -1,11 +1,14 @@
-const { app, BrowserWindow, ipcMain, session, shell, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, session, shell, dialog, clipboard, Menu } = require('electron')
 const { createServer } = require('node:http')
 const { randomBytes, createHash } = require('node:crypto')
 const { readFile, writeFile } = require('node:fs/promises')
 const path = require('node:path')
 const { normalizeOrigin } = require('./origin.cjs')
+const guide = require('./setup-guide.js')
 let window, origin = '', profile, activeLogin
+const manualWindows = new Set()
 const settingsFile = () => path.join(app.getPath('userData'), 'connection.json')
+const progressFile = () => path.join(app.getPath('userData'), 'setup-progress.json')
 const setupUrl = () => require('node:url').pathToFileURL(path.join(__dirname, 'setup.html')).href
 function trusted(event, setup = false) {
   const sender = event.senderFrame?.url
@@ -34,6 +37,19 @@ function createWindow(ses) {
 }
 function external(value) { try { const url = new URL(value); if (url.protocol === 'https:') void shell.openExternal(url.href) } catch { /* ignore unsafe links */ } }
 async function setup() { createWindow(); await window.loadFile(path.join(__dirname, 'setup.html')) }
+function safeProgress(value) {
+  if (!value || value.version !== 1 || !Number.isInteger(value.index) || value.index < 0 || value.index >= guide.steps.length) throw Error('進み具合を保存できません。')
+  return { version: 1, index: value.index, project: guide.project(value.project || '') ? value.project : '', origin: guide.origin(value.origin || ''), completed: Array.isArray(value.completed) ? value.completed.filter(id => guide.steps.some(step => step.id === id)) : [] }
+}
+async function showManual(value = {}) {
+  const manual = new BrowserWindow({ parent: window, width: 950, height: 850, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false } })
+  const contents = manual.webContents
+  manualWindows.add(contents)
+  manual.on('closed', () => manualWindows.delete(contents))
+  manual.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  manual.webContents.on('will-navigate', event => event.preventDefault())
+  await manual.loadFile(path.join(__dirname, 'setup-manual.html'), { query: { project: guide.project(value.project || '') ? value.project : '', origin: guide.origin(value.origin || '') } })
+}
 async function login() {
   if (activeLogin) throw Error('ログイン中です。ブラウザでアカウントを選んでください。')
   const verifier = randomBytes(32).toString('base64url')
@@ -65,6 +81,23 @@ async function login() {
   })
 }
 ipcMain.handle('kotoba:connect', async (event, value) => { trusted(event, true); await loadConnection(value) })
+ipcMain.handle('kotoba:progress-load', async event => {
+  trusted(event, true)
+  try { return safeProgress(JSON.parse(await readFile(progressFile(), 'utf8'))) } catch { return null }
+})
+ipcMain.handle('kotoba:progress-save', async (event, value) => { trusted(event, true); await writeFile(progressFile(), JSON.stringify(safeProgress(value)), { mode: 0o600 }) })
+ipcMain.handle('kotoba:copy', async (event, text) => { trusted(event, true); if (typeof text !== 'string' || text.length > 16000) throw Error('コピーする内容を確認してください。'); clipboard.writeText(text) })
+ipcMain.handle('kotoba:open-page', async (event, value) => {
+  trusted(event, true)
+  const url = new URL(value)
+  if (url.protocol !== 'https:' || url.hostname !== 'console.cloud.google.com' || url.username || url.password) throw Error('Google Cloudのページだけを開けます。')
+  await shell.openExternal(url.href)
+})
+ipcMain.handle('kotoba:manual', async (event, value) => { trusted(event, true); await showManual(value) })
+ipcMain.handle('kotoba:print', async event => {
+  if (!manualWindows.has(event.sender) || event.senderFrame !== event.sender.mainFrame) throw Error('印刷画面から操作してください。')
+  return new Promise((resolve, reject) => event.sender.print({ printBackground: true }, (success, reason) => { if (success || reason === 'cancelled') resolve(); else reject(Error('印刷できませんでした。')) }))
+})
 ipcMain.handle('kotoba:login', async event => { trusted(event); await login() })
 ipcMain.handle('kotoba:change', async event => {
   trusted(event)
@@ -79,6 +112,16 @@ if (!app.requestSingleInstanceLock()) app.quit()
 else {
   app.on('second-instance', () => { window?.show(); window?.focus() })
   app.whenReady().then(async () => {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: 'fileMenu' }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
+      { label: 'ヘルプ', submenu: [
+        { label: '初回設定ガイドを開く', click: async () => {
+          const answer = await dialog.showMessageBox(window, { buttons: ['戻る', 'ガイドを開く'], cancelId: 0, defaultId: 0, message: '初回設定ガイドを開きます。編集中のメモは先に保存してください。' })
+          if (answer.response === 1) { activeLogin?.(); await setup() }
+        } },
+        { label: '図解マニュアル・印刷', click: async () => { let value = {}; try { value = safeProgress(JSON.parse(await readFile(progressFile(), 'utf8'))) } catch { /* no progress yet */ } await showManual(value) } }
+      ] }
+    ]))
     try { const saved = JSON.parse(await readFile(settingsFile(), 'utf8')); if (saved.origin) { await loadConnection(saved.origin); return } } catch { /* first run or unavailable deployment */ }
     origin = ''; await setup()
   }).catch(error => { dialog.showErrorBox('ことばメモ', error.message); app.quit() })
